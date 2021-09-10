@@ -1,5 +1,5 @@
 import http from "http";
-import WebSocket from "ws";
+import SocketIO from "socket.io";
 import express from "express";
 
 const app = express();
@@ -15,29 +15,44 @@ const handleListen = () => console.log(`Listening on http://localhost:3001`);
 
 // http와 WebSocket을 한 서버에 통합 => 2개의 프로토콜이 같은 포트를 공유
 // 반드시 통합할 필요 없음 각자 만들어도 됨.
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
 
-// fake socket DB
-const sockets = [];
+const httpServer = http.createServer(app);
+const wsServer = SocketIO(httpServer);
 
-wss.on("connection", (socket) => {
-  sockets.push(socket);
+wsServer.on("connection", (socket) => {
   socket["nickname"] = "Anon";
-  console.log("Connected to Browser");
-  socket.on("close", () => {
-    console.log("Disconnected from the Browser");
+  socket.onAny((event) => {
+    console.log(`Socket Event: ${event}`);
   });
-  socket.on("message", (msg) => {
-    const message = JSON.parse(msg);
-    switch (message.type) {
-      case "new_message":
-        sockets.forEach((aSocket) => {
-          aSocket.send(`${socket.nickname}: ${message.payload}`);
-        });
-      case "nickname":
-        socket["nickname"] = message.payload;
-    }
+
+  socket.on("enter_room", (roomName, done) => {
+    console.log(socket.id);
+    console.log(socket.rooms);
+    socket.join(roomName);
+    console.log(socket.rooms);
+
+    // 백엔드에서 done을 호출하면 백엔드에서 실행하는 것이 아니라 frontent의 콜백 함수를 실행함.
+    // 만약 백엔드에서 실행하는 구조라면 큰 보안 문제가 발생할 수 있음(프론트엔드에서 백엔드를 실행할 수 있게 되므로)
+    done();
+
+    // 나를 제외한 다른 room 참가자들에게 메세지를 보냄
+    socket.to(roomName).emit("welcome", socket.nickname);
   });
+
+  socket.on("disconnecting", () => {
+    // socket.rooms의 리턴은 Set이기 때문에 iterable함
+    socket.rooms.forEach((room) =>
+      socket.to(room).emit("bye", socket.nickname)
+    );
+  });
+
+  socket.on("new_message", (msg, room, done) => {
+    socket.to(room).emit("new_message", `${socket.nickname}: ${msg}`);
+    done();
+  });
+
+  socket.on("nickname", (nickname) => (socket["nickname"] = nickname));
 });
-server.listen(3002, handleListen);
+// fake socket DB
+
+httpServer.listen(3000, handleListen);

@@ -22,10 +22,11 @@ const wsServer = SocketIO(httpServer);
 wsServer.on("connection", (socket) => {
   socket["nickname"] = "Anon";
   socket.onAny((event) => {
+    console.log(wsServer.sockets.adapter);
     console.log(`Socket Event: ${event}`);
   });
 
-  socket.on("enter_room", (roomName, done) => {
+  socket.on("enter_room", (roomName) => {
     console.log(socket.id);
     console.log(socket.rooms);
     socket.join(roomName);
@@ -33,7 +34,6 @@ wsServer.on("connection", (socket) => {
 
     // 백엔드에서 done을 호출하면 백엔드에서 실행하는 것이 아니라 frontent의 콜백 함수를 실행함.
     // 만약 백엔드에서 실행하는 구조라면 큰 보안 문제가 발생할 수 있음(프론트엔드에서 백엔드를 실행할 수 있게 되므로)
-    done();
 
     // 나를 제외한 다른 room 참가자들에게 메세지를 보냄
     socket.to(roomName).emit("welcome", socket.nickname);
@@ -51,7 +51,12 @@ wsServer.on("connection", (socket) => {
     done();
   });
 
-  socket.on("nickname", (nickname) => (socket["nickname"] = nickname));
+  socket.on("nickname", (nickname, done) => {
+    console.log("nickname serve");
+    console.log(nickname);
+    socket["nickname"] = nickname;
+    done();
+  });
 });
 // fake socket DB
 

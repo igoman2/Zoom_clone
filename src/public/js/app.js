@@ -3,6 +3,7 @@ const socket = io();
 
 const welcome = document.getElementById("welcome");
 const form = welcome.querySelector("form");
+const nickname = welcome.querySelector("#name");
 const room = document.getElementById("room");
 
 room.hidden = true;
@@ -28,8 +29,8 @@ function handleMessageSubmit(event) {
 
 function handleNicknameSubmit(event) {
   event.preventDefault();
-  const input = room.querySelector("#name input");
-  socket.emit("nickname", input.value);
+  const input = welcome.querySelector("#name input");
+  socket.emit("nickname", input.value, showRoom);
 }
 
 function showRoom() {
@@ -38,9 +39,9 @@ function showRoom() {
   const h3 = room.querySelector("h3");
   h3.innerText = `Room ${roomName}`;
   const msgForm = room.querySelector("#msg");
-  const nameForm = room.querySelector("#name");
+  // const nameForm = room.querySelector("#name");
   msgForm.addEventListener("submit", handleMessageSubmit);
-  nameForm.addEventListener("submit", handleNicknameSubmit);
+  // nameForm.addEventListener("submit", handleNicknameSubmit);
 }
 
 function handleRoomSubmit(event) {
@@ -49,12 +50,13 @@ function handleRoomSubmit(event) {
   // 1. wss은 string만 보낼 수 있었지만 socket.io는 object를 보낼 수 있음
   // 2. wss은 message 이벤트만 보낼 수 있었지만 socket.io는 여러 이벤트 생성 가능
   // 3. emit의 3번째 인자는 콜백. 반드시 마지막 아규먼트가 function 이어야 함
-  socket.emit("enter_room", input.value, showRoom);
+  socket.emit("enter_room", input.value);
   roomName = input.value;
   input.value = "";
 }
 
 form.addEventListener("submit", handleRoomSubmit);
+nickname.addEventListener("submit", handleNicknameSubmit);
 
 socket.on("welcome", (user) => {
   addMessage(`${user} arrived!`);
